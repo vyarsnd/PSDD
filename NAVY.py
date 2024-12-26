@@ -54,7 +54,7 @@ def display_footer():
         """
         <div style='text-align: center; font-size: small;'>
             <p>© 2024 - Dibuat oleh Navy Arisandi</p>
-            <a href="https://github.com/navyarisandi" target="_blank">GitHub</a> |
+            <a href="https://github.com/vyarsnd/PSDD" target="_blank">GitHub</a> |
             <a href="mailto:navy@example.com">Email</a>
         </div>
         """, unsafe_allow_html=True
@@ -159,64 +159,73 @@ def main():
             Sistem ini dirancang untuk membantu analisis data dan perbandingan model machine learning dengan tampilan profesional.
             Gunakan sidebar untuk navigasi fitur.
         """)
-        # Menampilkan dataset jika tersedia
+        # Menampilkan hasil preprocessing, split data, dan modeling jika sudah ada
         if "data" in st.session_state:
             st.subheader("📋 Dataset")
             st.dataframe(st.session_state["data"], use_container_width=True)
 
-        # Menampilkan hasil evaluasi model jika sudah ada
+        if "X_train" in st.session_state:
+            st.subheader("📊 Data Training dan Testing")
+            st.write(f"Jumlah Data Training: {st.session_state['X_train'].shape[0]}")
+            st.write(f"Jumlah Data Testing: {st.session_state['X_test'].shape[0]}")
+
+            st.write("🔹 Data Training:")
+            st.dataframe(pd.DataFrame(st.session_state["X_train"], columns=[f"Fitur {i}" for i in range(st.session_state['X_train'].shape[1])]), use_container_width=True)
+            st.write("🔹 Data Testing:")
+            st.dataframe(pd.DataFrame(st.session_state["X_test"], columns=[f"Fitur {i}" for i in range(st.session_state['X_test'].shape[1])]), use_container_width=True)
+
         if "results_df" in st.session_state:
             st.subheader("📋 Hasil Evaluasi Model Terakhir")
             st.dataframe(st.session_state["results_df"].style.background_gradient(cmap="Blues"), use_container_width=True)
 
-            # Menampilkan data training dan testing
-            if "X_train" in st.session_state:
-                st.subheader("📊 Data Training dan Testing")
-                st.write(f"Jumlah Data Training: {st.session_state['X_train'].shape[0]}")
-                st.write(f"Jumlah Data Testing: {st.session_state['X_test'].shape[0]}")
+            # Tampilkan hasil jika sudah ada
+        if "results" in st.session_state:
+            st.subheader("📊 Hasil Evaluasi Model dari Semua Split")
+            results = st.session_state["results"]
 
-                # Menampilkan seluruh data training dan testing
-                st.write("🔹 Data Training:")
-                st.dataframe(pd.DataFrame(st.session_state["X_train"], columns=[f"Fitur {i}" for i in range(st.session_state['X_train'].shape[1])]), use_container_width=True)
-                st.write("🔹 Data Testing:")
-                st.dataframe(pd.DataFrame(st.session_state["X_test"], columns=[f"Fitur {i}" for i in range(st.session_state['X_test'].shape[1])]), use_container_width=True)
+            # Loop setiap split dan model
+            for split_name, split_results in results.items():
+                st.write(f"**Split: {split_name}**")
+                for model_name, result in split_results.items():
+                    st.write(f"- **{model_name}**: Accuracy={result['accuracy']:.2f}, Precision={result['precision']:.2f}, Recall={result['recall']:.2f}, F1={result['f1_score']:.2f}")
 
-            # Menampilkan confusion matrix untuk semua model
-            st.subheader("📊 Confusion Matrix Model")
-            predictions = st.session_state["predictions"]
-            y_test = st.session_state["y_test"]
-            for model_name, y_pred in predictions.items():
-                st.write(f"**Confusion Matrix: {model_name}**")
-                cm = confusion_matrix(y_test, y_pred)
-                fig, ax = plt.subplots()
-                sns.heatmap(cm, annot=True, fmt="d", cmap="coolwarm",
-                            xticklabels=["Tidak Sakit", "Sakit"], yticklabels=["Tidak Sakit", "Sakit"])
-                ax.set_xlabel("Prediksi")
-                ax.set_ylabel("Aktual")
-                st.pyplot(fig)
+            # Menentukan hasil terbaik
+            best_result = st.session_state["best_result"]
+            st.subheader("🏆 Hasil Terbaik")
+            st.write(f"Model terbaik: **{best_result['model']}** pada split **{best_result['split']}**")
+            st.write(f"Accuracy: {best_result['accuracy']:.2f}")
+            st.write(f"Precision: {best_result['precision']:.2f}")
+            st.write(f"Recall: {best_result['recall']:.2f}")
+            st.write(f"F1-Score: {best_result['f1_score']:.2f}")
 
-            # Menampilkan jumlah data yang sakit dan tidak sakit
-            if "data" in st.session_state:
-                data = st.session_state["data"]
-                if 'target' in data.columns:
-                    heart_disease_count = data['target'].value_counts()
-                    st.subheader("📊 Jumlah Data yang Mengalami Penyakit Jantung")
-                    st.write(f"Jumlah data yang mengalami penyakit jantung (target = 1): {heart_disease_count.get(1, 0)}")
-                    st.write(f"Jumlah data yang tidak mengalami penyakit jantung (target = 0): {heart_disease_count.get(0, 0)}")
-                    st.write("🔹 Data yang mengidap penyakit jantung:")
-                    st.dataframe(data[data['target'] == 1], use_container_width=True)
-                    st.write("🔹 Data yang tidak mengidap penyakit jantung:")
-                    st.dataframe(data[data['target'] == 0], use_container_width=True)
-        else:
-            st.warning("Silakan lakukan modeling terlebih dahulu untuk melihat hasilnya.")
-        
-        st.balloons()
-        st.image("https://images.pexels.com/photos/3184639/pexels-photo-3184639.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=400", use_column_width=True)
+            # Menampilkan confusion matrix untuk hasil terbaik
+            st.write("🔹 Confusion Matrix Hasil Terbaik:")
+            cm = best_result["confusion_matrix"]
+            fig, ax = plt.subplots()
+            sns.heatmap(cm, annot=True, fmt="d", cmap="coolwarm",
+                        xticklabels=["Tidak Sakit", "Sakit"], yticklabels=["Tidak Sakit", "Sakit"])
+            ax.set_xlabel("Prediksi")
+            ax.set_ylabel("Aktual")
+            st.pyplot(fig)
+
+        # Menampilkan jumlah data yang sakit dan tidak sakit
+        if "data" in st.session_state:
+            data = st.session_state["data"]
+            if 'target' in data.columns:
+                heart_disease_count = data['target'].value_counts()
+                st.subheader("📊 Jumlah Data yang Mengalami Penyakit Jantung")
+                st.write(f"Jumlah data yang mengalami penyakit jantung (target = 1): {heart_disease_count.get(1, 0)}")
+                st.write(f"Jumlah data yang tidak mengalami penyakit jantung (target = 0): {heart_disease_count.get(0, 0)}")
+                st.write("🔹 Data yang mengidap penyakit jantung:")
+                st.dataframe(data[data['target'] == 1], use_container_width=True)
+                st.write("🔹 Data yang tidak mengidap penyakit jantung:")
+                st.dataframe(data[data['target'] == 0], use_container_width=True)
+
+        # Animasi
         modeling_animation_url = "https://assets4.lottiefiles.com/packages/lf20_zrqthn6o.json"
         modeling_animation = load_lottie_url(modeling_animation_url)
         if modeling_animation:
             st_lottie(modeling_animation, height=300)
-
 
     elif menu == "Upload Dataset":
         st.header("📁 Upload Dataset Anda")
@@ -322,118 +331,219 @@ def main():
         if "X_train" not in st.session_state:
             st.warning("Silakan lakukan preprocessing terlebih dahulu.")
         else:
-            X_train, X_test = st.session_state["X_train"], st.session_state["X_test"]
-            st.subheader("📊 Data Training dan Testing")
-            st.write(f"Jumlah Data Training: {X_train.shape[0]}")
-            st.write(f"Jumlah Data Testing: {X_test.shape[0]}")
+            data = st.session_state["data"]
 
-            # Menampilkan data training dan testing
-            st.write("🔹 Data Training:")
-            st.dataframe(pd.DataFrame(X_train, columns=[f"Fitur {i}" for i in range(X_train.shape[1])]), use_container_width=True)
-            st.write("🔹 Data Testing:")
-            st.dataframe(pd.DataFrame(X_test, columns=[f"Fitur {i}" for i in range(X_test.shape[1])]), use_container_width=True)
-            modeling_animation_url = "https://assets4.lottiefiles.com/packages/lf20_zrqthn6o.json"
-            modeling_animation = load_lottie_url(modeling_animation_url)
-            if modeling_animation:
-                st_lottie(modeling_animation, height=300)
+            # Jika preprocessing telah dilakukan
+            if "X" in st.session_state and "y" in st.session_state:
+                X = st.session_state["X"]
+                y = st.session_state["y"]
+                st.info("Menggunakan data setelah preprocessing.")
+            else:
+                # Gunakan data asli jika preprocessing belum dilakukan
+                st.warning("Preprocessing belum dilakukan. Menggunakan data asli.")
+                if "target" in data.columns:
+                    X = data.drop("target", axis=1).values
+                    y = data["target"].values
+                else:
+                    st.error("Kolom 'target' tidak ditemukan dalam dataset!")
+                    return
 
+            # Pembagian data dengan 3 rasio tetap
+            split_ratios = [0.3, 0.2, 0.1]  # 30%, 20%, 10% untuk data testing
+            split_titles = ["70% Training, 30% Testing", "80% Training, 20% Testing", "90% Training, 10% Testing"]
+
+            # Simpan hasil split untuk setiap rasio
+            splits = {}
+            for i, ratio in enumerate(split_ratios):
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=ratio, random_state=42
+                )
+                splits[split_titles[i]] = (X_train, X_test, y_train, y_test)
+
+            # Menampilkan hasil split
+            st.subheader("Hasil Pembagian Data:")
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.write(f"**{split_titles[0]}**")
+                X_train, X_test, y_train, y_test = splits[split_titles[0]]
+                st.write(f"Data Training: {len(X_train)}")
+                st.write(f"Data Testing: {len(X_test)}")
+                st.dataframe(pd.DataFrame(X_train).head())
+
+            with col2:
+                st.write(f"**{split_titles[1]}**")
+                X_train, X_test, y_train, y_test = splits[split_titles[1]]
+                st.write(f"Data Training: {len(X_train)}")
+                st.write(f"Data Testing: {len(X_test)}")
+                st.dataframe(pd.DataFrame(X_train).head())
+
+            with col3:
+                st.write(f"**{split_titles[2]}**")
+                X_train, X_test, y_train, y_test = splits[split_titles[2]]
+                st.write(f"Data Training: {len(X_train)}")
+                st.write(f"Data Testing: {len(X_test)}")
+                st.dataframe(pd.DataFrame(X_train).head())
+
+            # Menyimpan hasil split ke session state
+            st.session_state.update({
+                "splits": splits
+            })
 
     elif menu == "Modeling":
         st.header("🤖 Training Model")
         st.image("https://images.pexels.com/photos/546819/pexels-photo-546819.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=400", use_column_width=True)
-        if not all(key in st.session_state for key in ["X_train", "X_test", "y_train", "y_test"]):
-            st.warning("Silakan lakukan preprocessing terlebih dahulu.")
+        if "splits" not in st.session_state:
+            st.warning("Silakan lakukan pembagian data terlebih dahulu.")
         else:
-            X_train, X_test = st.session_state["X_train"], st.session_state["X_test"]
-            y_train, y_test = st.session_state["y_train"], st.session_state["y_test"]
+            splits = st.session_state["splits"]
 
-            st.info("📊 Melatih model...")
-            models = {
-                "Naive Bayes": GaussianNB(),
-                "Random Forest": RandomForestClassifier(random_state=42),
-                "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5)
-            }
+        # Daftar model untuk digunakan
+        models = {
+            "Naive Bayes": GaussianNB(),
+            "Random Forest": RandomForestClassifier(),
+            "K-Nearest Neighbors (KNN)": KNeighborsClassifier(),
+        }
 
-            results = {}
-            predictions = {}
-            for name, model in models.items():
+        # Latih dan evaluasi model pada setiap split
+        results = {model_name: {} for model_name in models.keys()}
+        for model_name, model in models.items():
+            for title, (X_train, X_test, y_train, y_test) in splits.items():
                 model.fit(X_train, y_train)
                 y_pred = model.predict(X_test)
+                
+                # Hitung akurasi dan metrik lainnya
                 accuracy = accuracy_score(y_test, y_pred)
-                precision = precision_score(y_test, y_pred)
-                recall = recall_score(y_test, y_pred)
-                f1 = f1_score(y_test, y_pred)
-                results[name] = [accuracy, precision, recall, f1]
-                predictions[name] = y_pred
-
-            results_cm = {}
-            for name, model in models.items():
-                model.fit(X_train, y_train)
-                y_pred = model.predict(X_test)
+                precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
+                recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+                f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
                 cm = confusion_matrix(y_test, y_pred)
-                results_cm[name] = cm
-                # Evaluasi
-                accuracy = accuracy_score(y_test, y_pred)
-                precision = precision_score(y_test, y_pred)
-                recall = recall_score(y_test, y_pred)
-                f1 = f1_score(y_test, y_pred)
-                results[name] = [accuracy, precision, recall, f1]
 
-            # Simpan confusion matrix di session_state
-            st.session_state["confusion_matrices"] = results_cm
+                results[model_name][title] = {
+                    "accuracy": accuracy,
+                    "precision": precision,
+                    "recall": recall,
+                    "f1_score": f1,
+                    "confusion_matrix": cm
+                }
 
-            # Menyimpan hasil evaluasi model di session_state untuk ditampilkan di Beranda
-            results_df = pd.DataFrame(results, index=["Accuracy", "Precision", "Recall", "F1-score"]).T
-            st.session_state["results_df"] = results_df  # Menyimpan hasil ke session state
+        # Menampilkan hasil evaluasi model dalam tabel
+        st.subheader("Hasil Evaluasi Model:")
+        for model_name, model_results in results.items():
+            st.write(f"**{model_name}**")
+            
+            # Mengubah hasil evaluasi menjadi DataFrame
+            eval_df = pd.DataFrame.from_dict(model_results, orient='index')
+            eval_df = eval_df[['accuracy', 'precision', 'recall', 'f1_score']]  # Fokus pada kolom evaluasi
+            eval_df = eval_df.style.highlight_max(axis=0, color='lightgreen')  # Menyorot nilai tertinggi
 
-            st.subheader("📈 Hasil Evaluasi Model")
-            st.dataframe(results_df.style.background_gradient(cmap="Blues"), use_container_width=True)
+            # Menampilkan tabel dengan tampilan yang lebih besar dan rapi
+            st.dataframe(eval_df.set_properties(**{'font-size': '18px', 'text-align': 'center'}))
+            
+            # Menampilkan Confusion Matrix sebagai Heatmap untuk setiap split
+            for title, result in model_results.items():
+                st.write(f"Confusion Matrix untuk {title}:")
+                cm = result["confusion_matrix"]
+                fig, ax = plt.subplots(figsize=(6, 4))
+                sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", cbar=False, ax=ax)
+                ax.set_title(f"Confusion Matrix for {model_name} ({title})")
+                st.pyplot(fig)
 
-            st.subheader("Visualisasi Performa Model")
-            fig, ax = plt.subplots(figsize=(10, 5))
-            results_df.plot(kind="bar", ax=ax, colormap="viridis")
-            plt.title("Performa Model")
-            plt.ylabel("Score")
-            plt.xticks(rotation=45)
-            st.pyplot(fig)
+        # Menampilkan hasil perbandingan untuk setiap split
+        st.subheader("Perbandingan Hasil Terbaik:")
+        comparison_data = []  # Menggunakan list untuk menyimpan data perbandingan
+        for title in splits.keys():
+            # Menentukan model terbaik berdasarkan akurasi tertinggi
+            best_model = max(results, key=lambda model: results[model][title]["accuracy"])
+            best_accuracy = results[best_model][title]["accuracy"]
+            best_precision = results[best_model][title]["precision"]
+            best_recall = results[best_model][title]["recall"]
+            best_f1 = results[best_model][title]["f1_score"]
 
-            st.session_state["models"] = models
-            st.session_state["predictions"] = predictions  # Simpan prediksi ke session_state
-            st.success("Modeling selesai! Silakan lanjut ke Evaluasi Model.")
-            modeling_animation_url = "https://assets4.lottiefiles.com/packages/lf20_zrqthn6o.json"
-            modeling_animation = load_lottie_url(modeling_animation_url)
-            if modeling_animation:
-                st_lottie(modeling_animation, height=300)
+            comparison_data.append({
+                "Split": title,
+                "Model": best_model,
+                "Accuracy": best_accuracy,
+                "Precision": best_precision,
+                "Recall": best_recall,
+                "F1 Score": best_f1
+            })
+
+        # Mengonversi list menjadi DataFrame
+        comparison_df = pd.DataFrame(comparison_data)
+
+        # Menampilkan tabel perbandingan dengan tampilan yang lebih besar
+        st.subheader("Tabel Perbandingan Hasil Terbaik:")
+        comparison_df = comparison_df.style.highlight_max(axis=0, color='lightgreen')  # Menyorot nilai tertinggi
+        st.dataframe(comparison_df.set_properties(**{'font-size': '18px', 'text-align': 'center'}))
+
+        # Menyimpan model dan splits setelah modeling
+        st.session_state["models"] = models  # Misalnya 'models' adalah dictionary berisi model-model yang telah dilatih
+        st.session_state["splits"] = splits  # 'splits' adalah dictionary yang berisi split data
 
 
     elif menu == "Evaluasi Model":
         st.header("📊 Evaluasi Model dengan Confusion Matrix")
         st.image("https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=400", use_column_width=True)
-        if not all(key in st.session_state for key in ["models", "predictions", "y_test"]):
+        if "models" not in st.session_state or "splits" not in st.session_state:
             st.warning("Silakan lakukan modeling terlebih dahulu.")
         else:
-            cm_dict = st.session_state["confusion_matrices"]
-            selected_model = st.selectbox("Pilih model untuk Confusion Matrix:", cm_dict.keys())
-            cm = cm_dict[selected_model]
+            # Ambil data model dan split dari session state
+            models = st.session_state["models"]
+            splits = st.session_state["splits"]
 
-            st.subheader(f"Confusion Matrix: {selected_model}")
-            fig, ax = plt.subplots()
-            sns.heatmap(cm, annot=True, fmt="d", cmap="coolwarm",
-                        xticklabels=["Tidak Sakit", "Sakit"], yticklabels=["Tidak Sakit", "Sakit"])
+            # Pilih model dan split untuk evaluasi
+            selected_model = st.selectbox("Pilih model untuk evaluasi:", models.keys())
+            selected_split = st.selectbox("Pilih split data untuk evaluasi:", splits.keys())
+
+            # Ambil model dan split yang dipilih
+            model = models[selected_model]
+            X_train, X_test, y_train, y_test = splits[selected_split]
+
+            # Latih model dan buat prediksi
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+
+            # Hitung metrik evaluasi: Akurasi, Precision, Recall, F1-Score
+            accuracy = accuracy_score(y_test, y_pred)
+            precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
+            recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+            f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
+            cm = confusion_matrix(y_test, y_pred)
+
+            # Menampilkan metrik evaluasi dalam tabel
+            st.subheader(f"Evaluasi Model {selected_model} pada {selected_split}")
+            evaluation_data = {
+                "Metric": ["Akurasi", "Precision", "Recall", "F1-Score"],
+                "Value": [accuracy, precision, recall, f1]
+            }
+            eval_df = pd.DataFrame(evaluation_data)
+            st.write(eval_df)
+
+            # Menampilkan Confusion Matrix sebagai Heatmap
+            st.subheader(f"Confusion Matrix untuk {selected_model} pada {selected_split}:")
+            fig, ax = plt.subplots(figsize=(6, 4))
+            sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", cbar=False, ax=ax)
             ax.set_xlabel("Prediksi")
             ax.set_ylabel("Aktual")
+            ax.set_xticklabels(["Tidak Sakit", "Sakit"])
+            ax.set_yticklabels(["Tidak Sakit", "Sakit"])
             st.pyplot(fig)
+
+            # Tambahkan animasi untuk memberikan visualisasi yang lebih menarik
             modeling_animation_url = "https://assets4.lottiefiles.com/packages/lf20_zrqthn6o.json"
             modeling_animation = load_lottie_url(modeling_animation_url)
             if modeling_animation:
                 st_lottie(modeling_animation, height=300)
 
-
     elif menu == "Prediksi Manual":
         st.header("✏️ Prediksi Manual")
+    
+        # Cek apakah preprocessing telah dilakukan
         if "X_train" not in st.session_state:
             st.warning("Silakan lakukan preprocessing terlebih dahulu.")
         else:
+            # Ambil data X_train, y_train, dan models dari session state
             X_train = pd.DataFrame(st.session_state["X_train"])
             y_train = st.session_state["y_train"]
             models = st.session_state["models"]
@@ -451,6 +561,7 @@ def main():
             for name, model in models.items():
                 prediction = model.predict(manual_df)
                 st.write(f"🔹 Prediksi ({name}): {'Sakit' if prediction[0] == 1 else 'Tidak Sakit'}")
+
 
     elif menu == "Tentang":
         st.header("📜 Tentang Aplikasi")
